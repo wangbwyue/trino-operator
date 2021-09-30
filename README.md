@@ -1,0 +1,2 @@
+# trino-operator
+trino operator
