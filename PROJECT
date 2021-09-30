@@ -1,0 +1,16 @@
+domain: deepexi.com
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+projectName: trino-operator
+repo: deepexi.com/trino-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: deepexi.com
+  group: tarim
+  kind: Trino
+  path: deepexi.com/trino-operator/apis/tarim/v1
+  version: v1
+version: "3"

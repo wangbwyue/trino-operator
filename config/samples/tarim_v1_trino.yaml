@@ -1,0 +1,96 @@
+apiVersion: tarim.deepexi.com/v1
+kind: Trino
+metadata:
+  name: trino-sample
+  namespace: default
+spec:
+  #  catalog 配置
+  cataLogConfig:
+    tpchProperties: |
+      connector.name=tpch
+      tpch.splits-per-node=4
+    tpcdsProperties: |
+      connector.name=tpcds
+      tpcds.splits-per-node=4
+  #  coordinator 配置
+  coordinatorConfig:
+    nodeProperties: |
+      node.environment=production
+      node.data-dir=/data/trino
+      plugin.dir=/usr/lib/trino/plugin
+    jvmConfig: |
+      -server
+      -Xmx2G
+      -XX:+UseG1GC
+      -XX:G1HeapRegionSize=32M
+      -XX:+UseGCOverheadLimit
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:+ExitOnOutOfMemoryError
+      -Djdk.attach.allowAttachSelf=true
+      -XX:-UseBiasedLocking
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Djdk.nio.maxCachedBufferSize=2000000
+    configProperties: |
+      coordinator=true
+      node-scheduler.include-coordinator=false
+      http-server.http.port=8080
+      query.max-memory=1GB
+      query.max-memory-per-node=512MB
+      query.max-total-memory-per-node=1GB
+      memory.heap-headroom-per-node=512MB
+      discovery.uri=http://localhost:8080
+    logProperties: |
+      io.trino=INFO
+  # work配置
+  workConfig:
+    nodeProperties: |
+      node.environment=production
+      node.data-dir=/data/trino
+      plugin.dir=/usr/lib/trino/plugin
+    jvmConfig: |
+      -server
+      -Xmx2G
+      -XX:+UseG1GC
+      -XX:G1HeapRegionSize=32M
+      -XX:+UseGCOverheadLimit
+      -XX:+ExplicitGCInvokesConcurrent
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:+ExitOnOutOfMemoryError
+      -Djdk.attach.allowAttachSelf=true
+      -XX:-UseBiasedLocking
+      -XX:ReservedCodeCacheSize=512M
+      -XX:PerMethodRecompilationCutoff=10000
+      -XX:PerBytecodeRecompilationCutoff=10000
+      -Djdk.nio.maxCachedBufferSize=2000000
+    configProperties: |
+      coordinator=false
+      node-scheduler.include-coordinator=false
+      http-server.http.port=8080
+      query.max-memory=1GB
+      query.max-memory-per-node=512MB
+      query.max-total-memory-per-node=1GB
+      memory.heap-headroom-per-node=512MB
+      discovery.uri=http://trino-sample-trino:8080
+    logProperties: |
+      io.trino=INFO
+
+  #  暂停
+  pause: true
+  #  cpu 总理
+  cpuTotal: 4
+  #  内存总量
+  memoryTotal: 100
+  #  租户id
+  tenantId: "aa"
+  #  项目空间id
+  projectSpeaceId: 1
+  #  metastore 信息
+  metastore: "ss.ss.ss.com"
+  workNum: 1
+  workCpu: 1
+  workMemory: 500
+  coordinatorCpu: 1
+  coordinatorMemory: 500

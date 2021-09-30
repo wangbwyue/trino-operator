@@ -1,0 +1,24 @@
+# permissions for end users to edit trinoes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: trino-editor-role
+rules:
+- apiGroups:
+  - tarim.deepexi.com
+  resources:
+  - trinoes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tarim.deepexi.com
+  resources:
+  - trinoes/status
+  verbs:
+  - get
