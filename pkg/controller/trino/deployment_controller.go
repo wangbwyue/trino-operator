@@ -8,8 +8,15 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+	"reflect"
 	v12 "trino-operator/apis/tarim/v1"
 	"trino-operator/pkg/apis/clientset/versioned"
+)
+
+var (
+	STOPPED       = "STOPPED"
+	RUNNING       = "RUNNING"
+	TRANSITIONING = "TRANSITIONING"
 )
 
 type DeploymentController struct {
@@ -18,13 +25,6 @@ type DeploymentController struct {
 }
 
 func (t *DeploymentController) OnAdd(obj interface{}) {
-	//controller, ok := obj.(*v1.Deployment)
-	//if !ok {
-	//	klog.Info("error to process OnAdd", controller)
-	//
-	//	return
-	//}
-	//klog.Info("OnAdd  deploy: ", controller.GetName())
 }
 
 func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
@@ -39,27 +39,33 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	klog.Infof(" process update deploy, name: %s", deployNewObj.GetName())
-
 	references := deployNewObj.GetOwnerReferences()
 	if len(references) == 0 || references[0].APIVersion != v12.GroupVersion.String() {
 		klog.Infof("process deploy, name:  %s,  skip", deployNewObj.GetName())
 		return
 	}
+
+	if reflect.DeepEqual(oldObj, newObj) {
+		klog.Infof("process deploy, name:  %s, equal skip ", deployNewObj.GetName())
+		return
+	}
+
+	klog.Infof(" process update deploy, name: %s", deployNewObj.GetName())
+
 	reference := references[0]
 	trino, err := t.TrinoClinet.TarimV1().Trinos(deployNewObj.Namespace).Get(context.Background(), reference.Name, v13.GetOptions{})
 	if err != nil {
 		klog.Infof(" process update deploy, error to get trino crd, name: %s", reference.Name)
 		return
 	}
-	coordinatorDeploy, err := t.KubeClient.AppsV1().Deployments(trino.Namespace).Get(context.Background(), GetCoordinatorName(trino.Name), v13.GetOptions{})
+	coordinatorDeploy, err := t.KubeClient.AppsV1().Deployments(trino.Namespace).Get(context.Background(), GetName(trino, COORDINATOR), v13.GetOptions{})
 	if err != nil {
-		klog.Infof(" process update deploy, ,error to get trino crd, name: %s ,deploy %s not found ", reference.Name, GetCoordinatorName(trino.Name))
+		klog.Infof(" process update deploy, ,error to get trino crd, name: %s , deploy %s not found ", reference.Name, GetName(trino, COORDINATOR))
 		return
 	}
-	workerDeploy, err := t.KubeClient.AppsV1().Deployments(trino.Namespace).Get(context.Background(), GetWorkerName(trino.Name), v13.GetOptions{})
+	workerDeploy, err := t.KubeClient.AppsV1().Deployments(trino.Namespace).Get(context.Background(), GetName(trino, WORKER), v13.GetOptions{})
 	if err != nil {
-		klog.Infof(" process update deploy, ,error to get trino crd, name: %s,deploy %s not found ", reference.Name, GetCoordinatorName(trino.Name))
+		klog.Infof(" process update deploy, ,error to get trino crd, name: %s, deploy %s not found ", reference.Name, GetName(trino, WORKER))
 		return
 	}
 	if trino.Spec.Pause {
@@ -78,6 +84,9 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 	trino.Status.WorkerPod = []v12.PodStatus{}
 	//pod status
 	if !trino.Spec.Pause {
+		totalCpu := int64(0)
+		totalMemory := int64(0)
+
 		// coordinator pod
 		list, err := t.KubeClient.CoreV1().Pods(trino.Namespace).List(context.Background(), v13.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labelSetCoordinator).String(),
@@ -89,10 +98,15 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 			trino.Status.CoordinatorPod = append(trino.Status.CoordinatorPod,
 				v12.PodStatus{
 					Name:      pod.GetName(),
-					Cpu:       fmt.Sprintf("%d", trino.Spec.CoordinatorCpu),
-					Memory:    fmt.Sprintf("%d", trino.Spec.CoordinatorMemory),
+					Cpu:       fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.CpuRequest),
+					Memory:    fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.MemoryRequest),
 					PodStatus: string(pod.Status.Phase),
 				})
+
+			cpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
+			totalCpu += cpu
+			memory, _ := pod.Spec.Containers[0].Resources.Requests.Memory().AsInt64()
+			totalMemory += memory
 		}
 
 		// worker pod
@@ -110,17 +124,25 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 			trino.Status.WorkerPod = append(trino.Status.WorkerPod,
 				v12.PodStatus{
 					Name:      pod.GetName(),
-					Cpu:       fmt.Sprintf("%d", trino.Spec.CoordinatorCpu),
-					Memory:    fmt.Sprintf("%d", trino.Spec.CoordinatorMemory),
+					Cpu:       pod.Spec.Containers[0].Resources.Requests.Cpu().String(),
+					Memory:    pod.Spec.Containers[0].Resources.Requests.Memory().String(),
 					PodStatus: string(pod.Status.Phase),
 				})
+			cpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
+			totalCpu += cpu
+			memory, _ := pod.Spec.Containers[0].Resources.Requests.Memory().AsInt64()
+			totalMemory += memory
 		}
+
+		trino.Status.TotalCpu = totalCpu
+		trino.Status.TotalMemory = totalMemory
+
 	}
 
 	//save
 	_, err = t.TrinoClinet.TarimV1().Trinos(trino.Namespace).UpdateStatus(context.Background(), trino, v13.UpdateOptions{})
 	if err != nil {
-		klog.Infof("process update deploy, error to get trino crd, name: %s ,error ", trino.Name, err)
+		klog.Infof("process update deploy, error to get trino crd, name: %s ,error %v", trino.Name, err)
 		return
 	}
 	klog.Infof("process update deploy success, crd name: %s ", reference.Name)
@@ -128,12 +150,4 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 }
 
 func (t *DeploymentController) OnDelete(obj interface{}) {
-	//controller, ok := obj.(*v1.Deployment)
-	//if !ok {
-	//	klog.Info("error to process OnDelete", controller)
-	//
-	//	return
-	//}
-	//
-	//klog.Info("OnDelete  deploy: ", controller.GetName())
 }

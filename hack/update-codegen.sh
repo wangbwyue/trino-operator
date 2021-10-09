@@ -25,4 +25,5 @@ bash "${CODEGEN_PKG}"/generate-groups.sh "client,lister,informer" \
   ${GROUP_VERSION} \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt \
   --output-base "${SCRIPT_ROOT}/.."
-#  --output-base "${SCRIPT_ROOT}/../../.." \
+#  --plural-exceptions=Trino:trinoes
+#  --plural-exceptions=Trino:trinoes just bucause code-generator has bad style code,

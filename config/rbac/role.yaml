@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - tarim.deepexi.com
   resources:
-  - trinoes
+  - trinos
   verbs:
   - create
   - delete
@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - tarim.deepexi.com
   resources:
-  - trinoes/status
+  - trinos/status
   verbs:
   - get
   - patch

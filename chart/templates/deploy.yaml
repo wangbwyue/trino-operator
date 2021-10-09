@@ -3,13 +3,13 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-  name: trino-system
+  name: {{.Values.namespace}}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: trino-controller-manager
-  namespace: trino-system
+  namespace: {{.Values.namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -22,8 +22,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: trino-controller-manager
-  namespace: trino-system
-
+  namespace: {{.Values.namespace}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +30,7 @@ metadata:
   labels:
     control-plane: controller-manager
   name: trino-controller-manager
-  namespace: trino-system
+  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
@@ -44,24 +43,13 @@ spec:
     spec:
       containers:
       - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
-        name: kube-rbac-proxy
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8443
-          name: https
-      - args:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
         - --leader-elect
         command:
         - /manager
-        - --trino-image=deploy.deepexi.com/fastdata/trino:test
-        image: deploy.deepexi.com/fastdata/trino-operator:v3
+        - --trino-image={{.Values.image}}
+        image: {{.Values.deploy.image}}
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -84,8 +72,3 @@ spec:
         runAsNonRoot: true
       serviceAccountName: trino-controller-manager
       terminationGracePeriodSeconds: 10
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-cert
