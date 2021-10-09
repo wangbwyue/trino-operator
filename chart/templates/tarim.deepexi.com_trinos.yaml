@@ -16,10 +16,26 @@ spec:
     singular: trino
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - jsonPath: .status.totalCpu
+      name: totalCpu
+      type: integer
+    - jsonPath: .status.totalMemory
+      name: totalMemory
+      type: integer
+    - jsonPath: .spec.coordinatorConfig.num
+      name: coordinatorNum
+      type: integer
+    - jsonPath: .spec.workerConfig.num
+      name: workerNum
+      type: integer
+    - jsonPath: .spec.pause
+      name: Pause
+      type: boolean
+    name: v1
     schema:
       openAPIV3Schema:
-        description: Trino is the Schema for the trinoes API
+        description: Trino is the Schema for the trinos API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,6 +52,11 @@ spec:
           spec:
             description: TrinoSpec defines the desired state of Trino
             properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: annotations
+                type: object
               cataLogConfig:
                 additionalProperties:
                   type: string
@@ -47,93 +68,93 @@ spec:
                   configProperties:
                     description: config properties
                     type: string
+                  cpuRequest:
+                    default: 1000
+                    description: per work cpu
+                    type: integer
                   jvmConfig:
                     description: jvm config
                     type: string
                   logProperties:
                     description: log properties
                     type: string
+                  memoryRequest:
+                    default: 2048
+                    description: per work memory
+                    type: integer
                   nodeProperties:
                     description: node prpperties
                     type: string
+                  num:
+                    default: 1
+                    description: number for Workload , coordinator is 1
+                    format: int32
+                    type: integer
                 required:
                 - configProperties
                 - jvmConfig
                 - logProperties
                 - nodeProperties
                 type: object
-              coordinatorCpu:
-                description: Coordinator cpu
-                type: integer
-              coordinatorMemory:
-                description: Coordinator mem
-                type: integer
-              cpuTotal:
-                format: int64
-                type: integer
-              createTime:
-                format: date-time
-                type: string
-              memoryTotal:
-                format: int64
-                type: integer
-              metastore:
-                description: metastore
-                type: string
+              labels:
+                additionalProperties:
+                  type: string
+                description: labels
+                type: object
+              nodePort:
+                default: true
+                description: nodeport
+                type: boolean
               pause:
                 description: Pause
                 type: boolean
-              projectSpeaceId:
-                description: projectSpeaceId
-                type: integer
-              tenantId:
-                description: TenantId
-                type: string
-              workConfig:
+              workerConfig:
                 description: work config
                 properties:
                   configProperties:
                     description: config properties
                     type: string
+                  cpuRequest:
+                    default: 1000
+                    description: per work cpu
+                    type: integer
                   jvmConfig:
                     description: jvm config
                     type: string
                   logProperties:
                     description: log properties
                     type: string
+                  memoryRequest:
+                    default: 2048
+                    description: per work memory
+                    type: integer
                   nodeProperties:
                     description: node prpperties
                     type: string
+                  num:
+                    default: 1
+                    description: number for Workload , coordinator is 1
+                    format: int32
+                    type: integer
                 required:
                 - configProperties
                 - jvmConfig
                 - logProperties
                 - nodeProperties
                 type: object
-              workCpu:
-                description: per work cpu
-                type: integer
-              workMemory:
-                description: per work memory
-                type: integer
-              workNum:
-                description: WorkNum
-                type: integer
             required:
             - cataLogConfig
             - coordinatorConfig
+            - nodePort
             - pause
-            - projectSpeaceId
-            - workConfig
-            - workCpu
-            - workMemory
-            - workNum
+            - workerConfig
             type: object
           status:
             description: TrinoStatus defines the observed state of Trino
             properties:
               coordinatorPod:
-                description: Coordinator
+                description: Coordinator pod status when this pod is running, you
+                  can connect to trino
                 items:
                   properties:
                     cpu:
@@ -152,10 +173,21 @@ spec:
                   type: object
                 type: array
               status:
-                description: status
+                description: "status for all trino cluster \tSTOPPED  when trino.spec.pause
+                  is true \tRUNNING      when trino.spec.pause is false and all workload
+                  is running \tTRANSITIONING  when trino.spec.pause is false and workload
+                  is not ready"
                 type: string
+              totalCpu:
+                description: TotalCpu size m
+                format: int64
+                type: integer
+              totalMemory:
+                description: size m total memory vaule for all workload
+                format: int64
+                type: integer
               workerPod:
-                description: Worker
+                description: Worker pod status
                 items:
                   properties:
                     cpu:
@@ -176,6 +208,8 @@ spec:
             required:
             - coordinatorPod
             - status
+            - totalCpu
+            - totalMemory
             - workerPod
             type: object
         type: object

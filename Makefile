@@ -1,6 +1,8 @@
-
+# Version for this project
+# formart e.g. 0.1.0
+VERSION ?= 0.1.0
 # Image URL to use all building/pushing image targets
-IMG ?= deploy.deepexi.com/fastdata/trino-operator:v3
+IMG ?= lxd5866/trimo-operator:$(VERSION)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -38,7 +40,8 @@ help: ## Display this help.
 ##@ Development
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook object paths="./..."    output:crd:artifacts:config=config/crd/bases  output:object:artifacts:config=apis/tarim/v1
+#	generate clientset informer listers
 	./hack/update-codegen.sh
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -109,5 +112,10 @@ rm -rf $$TMP_DIR ;\
 endef
 
 
+chart:
+	-rm -rf ./chart/templates/tarim.deepexi.com_trinos.yaml
+	cp config/crd/bases/tarim.deepexi.com_trinos.yaml ./chart/templates/
+
 #use to deploy
-generate-all: manifests  docker-build docker-push
+generate-all: manifests  docker-build docker-push chart
+

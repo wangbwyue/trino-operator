@@ -28,44 +28,27 @@ type TrinoSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	//catalog config
+	// catalog config
 	CataLogConfig map[string]string `json:"cataLogConfig"`
 
-	//coordiator config
+	// coordiator config
 	CoordinatorConfig WorkloadConfig `json:"coordinatorConfig"`
 
-	//work config
-	WorkConfig WorkloadConfig `json:"workConfig"`
+	// work config
+	WorkerConfig WorkloadConfig `json:"workerConfig"`
 
-	//projectSpeaceId
-	ProjectSpeaceId int `json:"projectSpeaceId"`
-
-	//Pause
+	// Pause
 	Pause bool `json:"pause"`
 
-	//metastore
-	Metastore string `json:"metastore,omitempty"`
+	// labels
+	Labels map[string]string `json:"labels,omitempty"`
 
-	//TenantId
-	TenantId string `json:"tenantId,omitempty"`
+	// annotations
+	Annotations map[string]string `json:"annotations,omitempty"`
 
-	CpuTotal int64 `json:"cpuTotal,omitempty"`
-
-	MemoryTotal int64 `json:"memoryTotal,omitempty"`
-
-	CreateTime metav1.Time `json:"createTime,omitempty"`
-
-	//Coordinator cpu
-	CoordinatorCpu int `json:"coordinatorCpu"`
-	//Coordinator mem
-	CoordinatorMemory int `json:"coordinatorMemory"`
-
-	//WorkNum
-	WorkNum int `json:"workNum"`
-	// per work cpu
-	WorkCpu int `json:"workCpu"`
-	//per work memory
-	WorkMemory int `json:"workMemory"`
+	//nodeport
+	// +kubebuilder:default=true
+	NodePort bool `json:"nodePort"`
 }
 
 type WorkloadConfig struct {
@@ -80,17 +63,39 @@ type WorkloadConfig struct {
 
 	//log properties
 	LogProperties string `json:"logProperties"`
+
+	// number for Workload , coordinator is 1
+	// +kubebuilder:default=1
+	Num int32 `json:"num,omitempty"`
+	// per work cpu
+	// +kubebuilder:default=1000
+	CpuRequest int `json:"cpuRequest,omitempty"`
+	//per work memory
+	// +kubebuilder:default=2048
+	MemoryRequest int `json:"memoryRequest,omitempty"`
 }
 
 // TrinoStatus defines the observed state of Trino
 type TrinoStatus struct {
-	//status
+
+	// status for all trino cluster
+	// 	STOPPED  when trino.spec.pause is true
+	//	RUNNING      when trino.spec.pause is false and all workload is running
+	//	TRANSITIONING  when trino.spec.pause is false and workload is not ready
 	Status string `json:"status"`
 
-	//Coordinator
+	// TotalCpu size m
+	TotalCpu int64 `json:"totalCpu"`
+
+	// size m
+	// total memory vaule for all workload
+	TotalMemory int64 `json:"totalMemory"`
+
+	// Coordinator pod status
+	// when this pod is running, you can connect to trino
 	CoordinatorPod []PodStatus `json:"coordinatorPod"`
 
-	//Worker
+	// Worker pod status
 	WorkerPod []PodStatus `json:"workerPod"`
 }
 
@@ -101,12 +106,18 @@ type PodStatus struct {
 	PodStatus string `json:"podStatus"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced,path=trinos
+// +kubebuilder:printcolumn:name="totalCpu",type=integer,JSONPath=`.status.totalCpu`
+// +kubebuilder:printcolumn:name="totalMemory",type=integer,JSONPath=`.status.totalMemory`
+// +kubebuilder:printcolumn:name="coordinatorNum",type=integer,JSONPath=`.spec.coordinatorConfig.num`
+// +kubebuilder:printcolumn:name="workerNum",type=integer,JSONPath=`.spec.workerConfig.num`
+// +kubebuilder:printcolumn:name="Pause",type=boolean,JSONPath=`.spec.pause`
 // +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Trino is the Schema for the trinoes API
+// Trino is the Schema for the trinos API
 type Trino struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -116,6 +127,7 @@ type Trino struct {
 }
 
 //+kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TrinoList contains a list of Trino
 type TrinoList struct {
