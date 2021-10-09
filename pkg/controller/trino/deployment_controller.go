@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"reflect"
 	v12 "trino-operator/apis/tarim/v1"
 	"trino-operator/pkg/apis/clientset/versioned"
 )
@@ -42,11 +41,6 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 	references := deployNewObj.GetOwnerReferences()
 	if len(references) == 0 || references[0].APIVersion != v12.GroupVersion.String() {
 		klog.Infof("process deploy, name:  %s,  skip", deployNewObj.GetName())
-		return
-	}
-
-	if reflect.DeepEqual(oldObj, newObj) {
-		klog.Infof("process deploy, name:  %s, equal skip ", deployNewObj.GetName())
 		return
 	}
 
@@ -95,14 +89,20 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 			return
 		}
 		for _, pod := range list.Items {
-			trino.Status.CoordinatorPod = append(trino.Status.CoordinatorPod,
-				v12.PodStatus{
-					Name:      pod.GetName(),
-					Cpu:       fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.CpuRequest),
-					Memory:    fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.MemoryRequest),
-					PodStatus: string(pod.Status.Phase),
-				})
+			podStatus := v12.PodStatus{
+				Name:      pod.GetName(),
+				Cpu:       fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.CpuRequest),
+				Memory:    fmt.Sprintf("%d", trino.Spec.CoordinatorConfig.MemoryRequest),
+				PodStatus: string(pod.Status.Phase),
+			}
+			if len(pod.Status.ContainerStatuses) > 0 {
+				containerStatus := pod.Status.ContainerStatuses[0]
+				podStatus.Ready = containerStatus.Ready
 
+			} else {
+				podStatus.Ready = false
+			}
+			trino.Status.CoordinatorPod = append(trino.Status.CoordinatorPod, podStatus)
 			cpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
 			totalCpu += cpu
 			memory, _ := pod.Spec.Containers[0].Resources.Requests.Memory().AsInt64()
@@ -121,13 +121,20 @@ func (t *DeploymentController) OnUpdate(oldObj, newObj interface{}) {
 			return
 		}
 		for _, pod := range listWorker.Items {
-			trino.Status.WorkerPod = append(trino.Status.WorkerPod,
-				v12.PodStatus{
-					Name:      pod.GetName(),
-					Cpu:       pod.Spec.Containers[0].Resources.Requests.Cpu().String(),
-					Memory:    pod.Spec.Containers[0].Resources.Requests.Memory().String(),
-					PodStatus: string(pod.Status.Phase),
-				})
+			podStatus := v12.PodStatus{
+				Name:      pod.GetName(),
+				Cpu:       pod.Spec.Containers[0].Resources.Requests.Cpu().String(),
+				Memory:    pod.Spec.Containers[0].Resources.Requests.Memory().String(),
+				PodStatus: string(pod.Status.Phase),
+			}
+
+			if len(pod.Status.ContainerStatuses) > 0 {
+				containerStatus := pod.Status.ContainerStatuses[0]
+				podStatus.Ready = containerStatus.Ready
+			} else {
+				podStatus.Ready = false
+			}
+			trino.Status.WorkerPod = append(trino.Status.WorkerPod, podStatus)
 			cpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
 			totalCpu += cpu
 			memory, _ := pod.Spec.Containers[0].Resources.Requests.Memory().AsInt64()

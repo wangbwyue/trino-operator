@@ -68,7 +68,7 @@ type WorkloadConfig struct {
 	// +kubebuilder:default=1
 	Num int32 `json:"num,omitempty"`
 	// per work cpu
-	// +kubebuilder:default=1000
+	// +kubebuilder:default=1
 	CpuRequest int `json:"cpuRequest,omitempty"`
 	//per work memory
 	// +kubebuilder:default=2048
@@ -104,6 +104,7 @@ type PodStatus struct {
 	Cpu       string `json:"cpu"`
 	Memory    string `json:"memory"`
 	PodStatus string `json:"podStatus"`
+	Ready     bool   `json:"ready"`
 }
 
 // +kubebuilder:object:root=true

@@ -69,7 +69,7 @@ spec:
                     description: config properties
                     type: string
                   cpuRequest:
-                    default: 1000
+                    default: 1
                     description: per work cpu
                     type: integer
                   jvmConfig:
@@ -115,7 +115,7 @@ spec:
                     description: config properties
                     type: string
                   cpuRequest:
-                    default: 1000
+                    default: 1
                     description: per work cpu
                     type: integer
                   jvmConfig:
@@ -165,11 +165,14 @@ spec:
                       type: string
                     podStatus:
                       type: string
+                    ready:
+                      type: boolean
                   required:
                   - cpu
                   - memory
                   - name
                   - podStatus
+                  - ready
                   type: object
                 type: array
               status:
@@ -198,11 +201,14 @@ spec:
                       type: string
                     podStatus:
                       type: string
+                    ready:
+                      type: boolean
                   required:
                   - cpu
                   - memory
                   - name
                   - podStatus
+                  - ready
                   type: object
                 type: array
             required:
