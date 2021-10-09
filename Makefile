@@ -112,10 +112,10 @@ rm -rf $$TMP_DIR ;\
 endef
 
 
-chart:
-	-rm -rf ./chart/templates/tarim.deepexi.com_trinos.yaml
+charts:
+	rm -rf ./chart/templates/tarim.deepexi.com_trinos.yaml
 	cp config/crd/bases/tarim.deepexi.com_trinos.yaml ./chart/templates/
 
 #use to deploy
-generate-all: manifests  docker-build docker-push chart
+generate-all: manifests  docker-build docker-push charts
 
